@@ -5,6 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
 using System.Security.Cryptography.X509Certificates;
+using System.Data;
+using System.Runtime.InteropServices.ComTypes;
+using Dapper;
+using System.ComponentModel;
+using System.Data.Linq.SqlClient;
 
 namespace ConsoleApp1
 {
@@ -14,14 +19,14 @@ namespace ConsoleApp1
         {
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder
             {
-                DataSource = "WIN-BR9AAF20AAG", UserID = "sa", Password = "Sunsetfame05!", InitialCatalog = "JL"
+                DataSource = "WIN-BR9AAF20AAG", UserID = "sa", Password = "Sunsetfame05!", InitialCatalog = "Calendar"
             };
 
             using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
             {
                 try
                 {
-                    connection.Open(); 
+                    connection.Open();
                 }
                 catch (SqlException e)
                 {
@@ -31,19 +36,68 @@ namespace ConsoleApp1
                 DataClasses1DataContext _db;
                 _db = new DataClasses1DataContext(connection);
 
-                var type1 = _db.UserCalendar.Select(x => new ModelCalendar(x.id, x.id_User, x.id_Calendar)).ToList();
+                var type1 = _db.Users.Select(x => new User(x.Name, x.Role, x.Mobile, x.Email)).ToList();
+                var dt = ConvertToDatatable(type1);
+                SqlCommand cmdProc = new SqlCommand("InsertUsersToDB", connection);
+                cmdProc.CommandType = CommandType.StoredProcedure;
+                cmdProc.Parameters.AddWithValue("@TypeTheUser", dt);
+                cmdProc.ExecuteNonQuery();
 
-                var type2 = (from table in _db.UserCalendar
-                    select new
-                    {
-                        table.id,
-                        table.id_User,
-                        table.id_Calendar
-                    }).Select(x => new ModelCalendar(x.id, x.id_User, x.id_Calendar)).ToList();
+                //var dt = new DataTable();
+                //dt.Columns.Add("Name");
+                //dt.Columns.Add("Role");
+                //dt.Columns.Add("Mobile");
+                //dt.Columns.Add("Email");
+                //_db.ExecuteCommand("InsertUsersToDB", new {User = dt.AsTableValuedParameter("dbo.InsertUsersToDB")},
+                //    CommandType.StoredProcedure);
+
             }
+        }
+
+        private static DataTable ConvertToDatatable<T>(List<T> data)
+        {
+            PropertyDescriptorCollection props = TypeDescriptor.GetProperties(typeof(T));
+            DataTable table = new DataTable("UserType");
+            for (int i = 0; i < props.Count; i++)
+            {
+                PropertyDescriptor prop = props[i];
+                if (prop.PropertyType.IsGenericType && prop.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    table.Columns.Add(prop.Name, prop.PropertyType.GetGenericArguments()[0]);
+                else
+                    table.Columns.Add(prop.Name, prop.PropertyType);
+            }
+
+            object[] values = new object[props.Count];
+            foreach (T item in data)
+            {
+                for (int i = 0; i < values.Length; i++)
+                {
+                    values[i] = props[i].GetValue(item);
+                }
+                table.Rows.Add(values);
+            }
+            return table;
         }
     }
 
+    
+
+
+    class User
+    {
+        public string Name { get; set; }
+        public string Role { get; set; }
+        public string Mobile { get; set; }
+        public string Email { get; set; }
+
+        public User(string name, string role, string mobile, string email)
+        {
+            this.Name = name;
+            this.Role = role;
+            this.Mobile = mobile;
+            this.Email = email;
+        }
+    }
 
     class ModelCalendar
     {
