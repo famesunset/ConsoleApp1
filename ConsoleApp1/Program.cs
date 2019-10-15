@@ -37,20 +37,21 @@ namespace ConsoleApp1
                 _db = new DataClasses1DataContext(connection);
 
                 var type1 = _db.Users.Select(x => new User(x.Name, x.Role, x.Mobile, x.Email)).ToList();
-                var dt = ConvertToDatatable(type1);
-                SqlCommand cmdProc = new SqlCommand("InsertUsersToDB", connection);
-                cmdProc.CommandType = CommandType.StoredProcedure;
-                cmdProc.Parameters.AddWithValue("@TypeTheUser", dt);
-                cmdProc.ExecuteNonQuery();
+                var TypeTheuser = ConvertToDatatable(type1);
 
-                //var dt = new DataTable();
-                //dt.Columns.Add("Name");
-                //dt.Columns.Add("Role");
-                //dt.Columns.Add("Mobile");
-                //dt.Columns.Add("Email");
-                //_db.ExecuteCommand("InsertUsersToDB", new {User = dt.AsTableValuedParameter("dbo.InsertUsersToDB")},
-                //    CommandType.StoredProcedure);
+                var result = connection.Query(
+                    "InsertUsersToDB", 
+                    new {TypeTheuser}, 
+                    commandType: CommandType.StoredProcedure);
 
+
+
+
+
+                //SqlCommand cmdProc = new SqlCommand("InsertUsersToDB", connection);
+                //cmdProc.CommandType = CommandType.StoredProcedure;
+                //cmdProc.Parameters.AddWithValue("@TypeTheUser", dt);
+                //cmdProc.ExecuteNonQuery();
             }
         }
 
@@ -83,7 +84,7 @@ namespace ConsoleApp1
     
 
 
-    class User
+    public class User
     {
         public string Name { get; set; }
         public string Role { get; set; }
